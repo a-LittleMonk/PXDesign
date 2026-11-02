@@ -77,7 +77,7 @@ Set the runtime to a GPU, then run cells 1–7 in order.
 | 3 | Install Python 3.11 | ~1 min |
 | 4 | Build the environment | ~12 min, ~12 GB |
 | 5 | Compile the fused LayerNorm kernel | ~3 min |
-| 6 | Download model weights | 1–8 GB, cached on Drive |
+| 6 | Download model weights | 1–8 GB |
 | 7 | Run the evaluation | depends |
 | 8 | Results | — |
 | 9 | View a prediction | — |
@@ -142,9 +142,12 @@ The notebook pipes it straight into `tar` and keeps only the model-1 files, whic
 all any default setting uses — upstream's `af2.model_ids` is `[0]`. Take all five only
 if you raise `af2_model_ids`.
 
-Everything is copied to `My Drive/PXDesign/tool_weights` and restored from there next
-session, so the download is a one-time cost rather than a per-session one. Untick
-`cache_in_drive` if your Drive is tight.
+**By default nothing is written to your Drive.** The weights go to Colab's own disk
+and disappear with the runtime, which means step 6 downloads them again next session.
+Tick `cache_in_drive` to keep them in `My Drive/PXDesign/tool_weights`: it then looks
+there first and uses whatever is already present, and only downloads — and saves back
+— what is missing. Worth ticking once you know you will run this more than a couple of
+times; the cell prints which of the two it is doing.
 
 ## Reading the output (cell 8)
 
