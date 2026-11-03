@@ -107,7 +107,7 @@ Set the runtime to a GPU, then run steps 1–6 once and 7 onward as often as you
 | 3 | Install Python 3.11 | ~1 min |
 | 4 | Build the environment | ~12 min, ~12 GB |
 | 5 | Compile the fused LayerNorm kernel | ~3 min |
-| 6 | Download model weights | 1–8 GB |
+| 6 | Download model weights | 1.5–9 GB |
 | 7 | Describe the design target (crop, hotspots) | — |
 | 8 | Generate binders with PXDesign-d | depends |
 | 9 | Run the evaluation | depends |
@@ -202,8 +202,13 @@ immediately.
 | AlphaFold2 params | ~1.1 GB kept (5.3 GB downloaded) | binder |
 | ESMFold | ~2.7 GB | monomer |
 | ProteinMPNN | ~50 MB | monomer (binder uses ColabDesign's copy) |
-| Protenix checkpoints + CCD cache | ~1 GB and up, automatic on first run | binder, generation |
+| Chemical component dictionary | ~570 MB | everything |
+| Protenix checkpoints | ~1 GB and up, automatic on first run | binder, generation |
 | PXDesign-d checkpoint | automatic on first run | generation |
+
+The chemical component dictionary is required by anything that reads a structure, so
+it is always fetched — upstream's `download_tool_weights.sh` does the same. Step 7
+reads it and cannot download it for itself, which is why it is not left to the runs.
 
 The AlphaFold2 archive is a single 5.3 GB tar and there is no partial download of it.
 The notebook pipes it straight into `tar` and keeps only the model-1 files, which is
