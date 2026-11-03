@@ -78,6 +78,14 @@ leaving Colab's Python alone.
 One environment serves both: PXDesign's `install.sh` installs exactly what
 PXDesignBench's does and then adds itself, so there is nothing to reconcile.
 
+Three arguments differ from upstream's recommended command, and all three are
+upstream's own documented fallback for a card without the hardware: `--dtype fp32`
+instead of `bf16` (a T4 has no bfloat16 unit), `--use_deepspeed_evo_attention False`
+(the kernel needs a CUTLASS build this environment does not have), and
+`--use_fast_ln` following whether step 5 managed to compile the fused kernel. None of
+the three changes what is computed — fused LayerNorm and DeepSpeed attention are
+kernel optimisations, and fp32 is the more precise of the two dtypes, not the less.
+
 Three details that are easy to get wrong and are handled for you:
 
 - Upstream launches ProteinMPNN, AlphaFold2 and Protenix as subprocesses that call
@@ -211,10 +219,20 @@ times; the cell prints which of the two it is doing.
 
 ## Reading the output (steps 8 and 10)
 
-The generator writes its own ranked table, `summary.csv`, with upstream's four
-filters (`AF2-IG`, `AF2-IG-easy`, `Protenix`, `Protenix-basic`) as `True`/`False`
-columns, next to the backbones themselves: `orig_designed/` for everything generated,
-`passing-AF2-IG-easy/` and `passing-Protenix-basic/` for what cleared those two.
+The generator's `pipeline` modes write their own ranked table, `summary.csv`, with
+upstream's four filters as `AF2-IG-success`, `AF2-IG-easy-success`,
+`Protenix-success` and `Protenix-basic-success` columns, next to the structures:
+
+- `orig_designed/` — the backbone as PXDesign-d drew it. This is the ranked
+  *selection*, not every sample. Upstream returns up to `max_success_return`
+  successes and pads to `min_total_return` with failures, and the CLI sets both to
+  `n_sample` — so failed designs are in this folder too. Read `summary.csv`, not the
+  folder listing.
+- `passing-AF2-IG-easy/`, `passing-Protenix-basic/` — for rows that cleared those
+  filters, the *docked pose* from AF2 or Protenix rather than the original backbone.
+  `chosen_struct_path` in the table says which structure upstream prefers per row.
+
+`infer` mode writes raw samples to `<task>/seed_<n>/predictions/` and no table.
 Thresholds are in [upstream's README](https://github.com/bytedance/PXDesign#32-understanding-metrics--filters-summarycsv)
 and in the notebook's closing section.
 
