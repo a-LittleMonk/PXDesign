@@ -89,6 +89,11 @@ killer, because AlphaFold2 on CPU looks like a hang rather than an error. Cell 6
 raises if a weights file did not arrive. Both failures are terminal: see *If something
 fails* in the notebook, and do not re-run the cell in place.
 
+Cell 7 prints a filtered view of upstream's output by default: the metrics, the
+progress bars, and anything that looks like a failure, without the per-call
+bookkeeping its dependencies log. The unfiltered log is always written to
+`pxd_output/<run_name>.log`, and unticking `quiet_output` prints it as-is.
+
 Cell 5 is allowed to fail. It builds Protenix's fused LayerNorm kernel, which is a
 speed optimisation over `torch.nn.LayerNorm` and nothing more; if it does not compile,
 cell 7 leaves `LAYERNORM_TYPE` unset and runs a little slower.
