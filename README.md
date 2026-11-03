@@ -98,42 +98,47 @@ Three details that are easy to get wrong and are handled for you:
 
 ## Running it
 
-Set the runtime to a GPU, then run steps 1–6 once and 7 onward as often as you like.
+Set the runtime to a GPU, then run steps 1–3 once and 4 onward as often as you like.
 
 | Step | | Time |
 |---|---|---|
 | 1 | Check the GPU | — |
 | 2 | Mount your Google Drive | — |
-| 3 | Install Python 3.11 | ~1 min |
-| 4 | Build the environment | ~12 min, ~12 GB |
-| 5 | Compile the fused LayerNorm kernel | ~3 min |
-| 6 | Download model weights | 1.5–9 GB |
-| 7 | Describe the design target (crop, hotspots) | — |
-| 8 | Generate binders with PXDesign-d | depends |
-| 9 | Run the evaluation | depends |
-| 10 | Results | — |
-| 11 | View a prediction | — |
-| 12 | Save results to Drive | — |
+| 3 | **Set up everything** | ~25 min, ~17 GB |
+| 4 | Describe the design target (crop, hotspots) | — |
+| 5 | Generate binders with PXDesign-d | depends |
+| 6 | Run the evaluation | depends |
+| 7 | Results | — |
+| 8 | View a prediction | — |
+| 9 | Save results to Drive | — |
 
-Steps 7 and 8 are the generator; skip them to evaluate designs you already have.
-Step 9 reads step 8's output directly — set `inputs_from` to
-`PXDesign designs (step 8)` with `demo_settings` unticked.
+Step 3 is the whole installation in one cell: Python 3.11, the pinned stack, both
+repos, the fused LayerNorm attempt, and **every weight and checkpoint the run steps
+need**. That last part is deliberate — upstream's tools download their checkpoints
+lazily, on first use, which meant a first design run stopped for several minutes in
+the middle to pull 1.5 GB. Nothing below step 3 downloads a model.
 
-Step 4 checks itself and raises if NumPy got pulled up to 2.x, if torch is not 2.3.1,
-if torch cannot see the GPU, if ColabDesign or PXDesign will not import, or if JAX
-landed on CPU — that last one is the quiet killer, because AlphaFold2 on CPU looks
-like a hang rather than an error. Step 6 raises if a weights file did not arrive. Both
-failures are terminal: see *If something fails* in the notebook, and do not re-run the
-cell in place.
+It is safe to re-run. The environment phase is skipped once it has passed, partial
+downloads resume, and a file that is already the right size is left alone. It checks
+itself at the end and raises if NumPy got pulled up to 2.x, if torch is not 2.3.1, if
+torch cannot see the GPU, if ColabDesign or PXDesign will not import, or if JAX landed
+on CPU — that last one is the quiet killer, because AlphaFold2 on CPU looks like a
+hang rather than an error.
 
-Steps 8 and 9 print a filtered view of upstream's output by default: the metrics, the
-progress bars, and anything that looks like a failure, without the per-call
-bookkeeping its dependencies log. The unfiltered log is always written next to the
-results, and unticking `quiet_output` prints everything as-is.
+Two of its phases are allowed to fail without stopping anything. The fused LayerNorm
+kernel usually does *not* build on current Colab, because the CUDA toolkit has dropped
+the `compute_70` target Protenix hardcodes; that costs some speed and nothing else.
+And `install_for` only fetches what you asked for, so re-running step 3 with a
+different selection is how you add the rest later.
 
-Step 5 is allowed to fail. It builds Protenix's fused LayerNorm kernel, which is a
-speed optimisation over `torch.nn.LayerNorm` and nothing more; if it does not compile,
-steps 8 and 9 fall back and run a little slower.
+Steps 4 and 5 are the generator; skip them to evaluate designs you already have.
+Step 6 reads step 5's output directly — set `inputs_from` to
+`PXDesign designs (step 5)` with `demo_settings` unticked.
+
+Steps 5 and 6 print a filtered view of upstream's output by default: the metrics, the
+progress bars with an ETA, and anything that looks like a failure, without the
+per-call bookkeeping its dependencies log. The unfiltered log is always written next
+to the results, and unticking `quiet_output` prints everything as-is.
 
 ### A T4 is small for this
 
@@ -150,33 +155,33 @@ Two things need you; everything else, including saving back to Drive, is unatten
 
 1. **Step 2 waits for a Google Drive authorisation popup.** Run all will sit there
    until you click through it.
-2. **Steps 7–9 must already say what you want done.** Their defaults design against
+2. **Steps 4–6 must already say what you want done.** Their defaults design against
    the bundled PD-L1 example and then evaluate the five bundled binder examples,
-   ignoring whatever is in Drive. For your own work, fill in step 7's target and
-   untick step 9's `demo_settings`.
+   ignoring whatever is in Drive. For your own work, fill in step 4's target and
+   untick step 6's `demo_settings`.
 
-**Run step 12 before closing the tab.** Colab deletes `/content` when the runtime
+**Run step 9 before closing the tab.** Colab deletes `/content` when the runtime
 ends, and both the designs and the results live there until you copy them to Drive.
 
-## Designing against your own target (steps 2 and 7)
+## Designing against your own target (steps 2 and 4)
 
 Step 2 mounts your Drive and creates `My Drive/PXDesign/inputs`,
 `My Drive/PXDesign/outputs` and `My Drive/PXDesign/tool_weights`. Put the target
 structure in `inputs` — `.cif` is strongly preferred, since a `.pdb` gets converted
-and may have its chain and residue ids reassigned on the way — then name it in step 7
+and may have its chain and residue ids reassigned on the way — then name it in step 4
 along with the chain, the region to keep, the hotspots and the binder length.
 
-Step 7 writes the YAML, runs upstream's `check-input` and `parse-target` on it, and
+Step 4 writes the YAML, runs upstream's `check-input` and `parse-target` on it, and
 shows you the result. For a target with two chains that each need their own crop or
 hotspots, edit the YAML it wrote (`/content/pxd_design/<task>/<task>.yaml`) and re-run
-step 8.
+step 5.
 
 An MSA of the **full-length** target sequence makes the Protenix confidence scores
 meaningful, and cropping does not change that. Leave `msa_dir` empty and one is
-searched online during step 8, which is slower and rate-limited; a folder holding
+searched online during step 5, which is slower and rate-limited; a folder holding
 `pairing.a3m` and `non_pairing.a3m` skips it.
 
-## Evaluating your own designs (steps 2 and 9)
+## Evaluating your own designs (steps 2 and 6)
 
 An evaluation runs on a *folder*, not a single file: put the designs you want scored
 into `inputs`, or a subfolder of it, and set `inputs_from` to `Google Drive folder`.
@@ -195,7 +200,7 @@ format (copy `examples/orig_seqs_test.json`) and that step disappears. Since the
 target is the same across a design campaign, computing it once pays for itself
 immediately.
 
-## The weights, and what they cost (step 6)
+## The weights, and what they cost (step 3)
 
 | | Size | Needed for |
 |---|---|---|
@@ -207,8 +212,14 @@ immediately.
 | PXDesign-d checkpoint | automatic on first run | generation |
 
 The chemical component dictionary is required by anything that reads a structure, so
-it is always fetched — upstream's `download_tool_weights.sh` does the same. Step 7
-reads it and cannot download it for itself, which is why it is not left to the runs.
+it is always fetched — upstream's `download_tool_weights.sh` does the same. Step 4
+reads it and cannot download it for itself.
+
+The model checkpoints are fetched up front for a different reason: upstream's tools
+download them lazily on first use, into three different default locations. Step 3 puts
+them all in one directory and steps 5 and 6 pass that directory to each of the three
+consumers — `pxdesign` takes `--load_checkpoint_dir`, and PXDesignBench's two Protenix
+tools take their own `load_checkpoint_dir` each.
 
 The AlphaFold2 archive is a single 5.3 GB tar and there is no partial download of it.
 The notebook pipes it straight into `tar` and keeps only the model-1 files, which is
@@ -216,13 +227,13 @@ all any default setting uses — upstream's `af2.model_ids` is `[0]`. Take all f
 if you raise `af2_model_ids`.
 
 **By default nothing is written to your Drive.** The weights go to Colab's own disk
-and disappear with the runtime, which means step 6 downloads them again next session.
+and disappear with the runtime, which means step 3 downloads them again next session.
 Tick `cache_in_drive` to keep them in `My Drive/PXDesign/tool_weights`: it then looks
 there first and uses whatever is already present, and only downloads — and saves back
 — what is missing. Worth ticking once you know you will run this more than a couple of
 times; the cell prints which of the two it is doing.
 
-## Reading the output (steps 8 and 10)
+## Reading the output (steps 5 and 7)
 
 The generator's `pipeline` modes write their own ranked table, `summary.csv`, with
 upstream's four filters as `AF2-IG-success`, `AF2-IG-easy-success`,
@@ -271,7 +282,7 @@ or [BindCraft-GoogleColab](https://github.com/a-LittleMonk/BindCraft-GoogleColab
 It also does not do the Foldseek-based novelty and diversity post-processing upstream
 ships (`pxdbench/scripts/postprocess_*.py`). Foldseek is a separate install and those
 scripts are a separate, CPU-bound step; the pairwise TM-score diversity metric
-(`eval_diversity`) is available in step 9 and does not need it.
+(`eval_diversity`) is available in step 6 and does not need it.
 
 ## Credit
 
